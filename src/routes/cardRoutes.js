@@ -132,7 +132,6 @@ router.get("/column/:columnId", getCardsByColumnId);
  */
 router.get("/:id", getCardById);
 
-
 /**
  * @swagger
  * /api/cards/{id}:
@@ -183,6 +182,7 @@ router.get("/:id", getCardById);
  *         description: Card not found
  */
 
+// PUT – update „complet”
 router.put("/:id", validate(validations.validateCardUpdate), updateCard);
 
 /**
@@ -255,7 +255,8 @@ router.delete("/:id", deleteCard);
  *         description: Column or card not found
  */
 
-router.patch("/reorder", updateCardsOrder);
+// PATCH – update „parțial” (fallback pentru front)
+router.patch("/:id", validate(validations.validateCardUpdate), updateCard);
 
 /**
  * @swagger
@@ -297,6 +298,10 @@ router.patch("/reorder", updateCardsOrder);
  *       404:
  *         description: Card or column not found
  */
-router.patch("/:id/move", validate(validations.validateCardMove), moveCardToColumn);
+router.patch(
+  "/:id/move",
+  validate(validations.validateCardMove),
+  moveCardToColumn
+);
 
 module.exports = router;
