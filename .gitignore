@@ -1,4 +1,27 @@
+# deps
 node_modules/
+
+# env (nu urcăm niciodată secretele)
 .env*
+!.env.example
+
+# build artefacts
 build/
 dist/
+
+# fișiere uploadate la runtime
+uploads/
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS & editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
