@@ -1,67 +1,44 @@
-/**
- * @file validateConfig.js
- * @description Utility for validating environment configurations
- */
+// src/utils/validateConfig.js
 
-const { InternalServerError } = require('./errors');
+const { InternalServerError } = require("./errors");
 
-/**
- * Validates that all required environment variables are present
- * @param {Object} config - Configuration object to validate 
- * @param {Array<string>} requiredVars - List of required variable names
- * @param {string} serviceName - Name of service being validated (for error messages)
- * @throws {InternalServerError} If any required variables are missing
- * @returns {boolean} True if all required variables are present
- */
 const validateRequiredEnvVars = (config, requiredVars, serviceName) => {
-  const missingVars = requiredVars.filter(varName => !config[varName]);
-  
+  const missingVars = requiredVars.filter((varName) => !config[varName]);
   if (missingVars.length > 0) {
     throw new InternalServerError(
-      `${serviceName} configuration error: Missing required environment variables: ${missingVars.join(', ')}`
+      `${serviceName} configuration error: Missing required environment variables: ${missingVars.join(
+        ", "
+      )}`
     );
   }
-  
   return true;
 };
 
-/**
- * Validates Cloudinary configuration
- * @throws {InternalServerError} If any required Cloudinary variables are missing
- */
-const validateCloudinaryConfig = () => {
-  const requiredVars = [
-    'CLOUDINARY_CLOUD_NAME',
-    'CLOUDINARY_API_KEY',
-    'CLOUDINARY_API_SECRET'
-  ];
-  
-  return validateRequiredEnvVars(process.env, requiredVars, 'Cloudinary');
-};
-
-/**
- * Validates MongoDB configuration
- * @throws {InternalServerError} If MongoDB URI is missing
- */
 const validateMongoConfig = () => {
-  const requiredVars = ['MONGO_URI'];
-  return validateRequiredEnvVars(process.env, requiredVars, 'MongoDB');
+  return validateRequiredEnvVars(process.env, ["MONGO_URI"], "MongoDB");
 };
 
-/**
- * Validates all required application configurations
- * @throws {InternalServerError} If any required configuration is missing
- */
+const validateCloudinaryConfig = () => {
+  const enabled = (process.env.CLOUDINARY_ENABLED || "true") === "true";
+  if (!enabled) {
+    console.warn("[config] Cloudinary disabled (CLOUDINARY_ENABLED=false)");
+    return true;
+  }
+  return validateRequiredEnvVars(
+    process.env,
+    ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"],
+    "Cloudinary"
+  );
+};
+
 const validateAppConfig = () => {
   try {
-    validateCloudinaryConfig();
     validateMongoConfig();
-    // Add more service validations as needed
-    
-    console.log('✅ All configuration validations passed');
+    validateCloudinaryConfig(); // acum e condițional
+    console.log("✅ All configuration validations passed");
     return true;
   } catch (error) {
-    console.error('❌ Configuration validation failed:', error.message);
+    console.error("❌ Configuration validation failed:", error.message);
     throw error;
   }
 };
@@ -70,5 +47,5 @@ module.exports = {
   validateRequiredEnvVars,
   validateCloudinaryConfig,
   validateMongoConfig,
-  validateAppConfig
+  validateAppConfig,
 };
