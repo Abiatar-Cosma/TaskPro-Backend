@@ -36,7 +36,7 @@ const { notFound, errorHandler } = require("./middlewares/errorMiddleware");
 const app = express();
 app.set("trust proxy", 1);
 
-// ---------- SECURITY HEADERS ----------
+// ---------- SECURITY ----------
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -62,14 +62,9 @@ const allowedOrigins = Array.from(
   )
 );
 
-// fără cookies cross-site
 const corsOptions = {
-  origin(origin, cb) {
-    // permită tool-uri fără Origin (curl/Postman/healthz)
-    if (!origin) return cb(null, true);
-    return cb(null, allowedOrigins.includes(origin));
-  },
-  credentials: false, // ⬅️ IMPORTANT
+  origin: allowedOrigins, // listă simplă (fără funcție)
+  credentials: false, // ⬅️ fără cookies cross-site
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   optionsSuccessStatus: 204,
