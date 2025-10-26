@@ -26,36 +26,60 @@ const validate = (validations) => {
 
 /**
  * Normalizează body-ul cardului:
- * - acceptă `deadline` ca alias pentru `dueDate`
- * - normalizează `priority` la: low/medium/high (altfel o elimină)
+ * - acceptă alias-uri pentru column: columnId / column_id / colId -> column
+ * - acceptă `deadline` ca alias pentru `dueDate` (transformă în ISO dacă se poate)
+ * - normalizează `priority` la: low/medium/high (valori ca 'none', 'without' devin low)
+ * - face trim pe title/description
  */
 const normalizeCardBody = (req, _res, next) => {
   const b = req.body || {};
+  const out = { ...b };
 
-  // deadline -> dueDate (dacă dueDate nu e deja setat)
-  if (b.deadline && !b.dueDate) {
+  // --- alias pentru column ---
+  out.column = out.column || out.columnId || out.column_id || out.colId;
+  delete out.columnId;
+  delete out.column_id;
+  delete out.colId;
+
+  // --- title/description: trim ---
+  if (typeof out.title === "string") out.title = out.title.trim();
+  if (typeof out.description === "string")
+    out.description = out.description.trim();
+
+  // --- deadline -> dueDate (dacă dueDate nu e deja setat) ---
+  if (out.deadline && !out.dueDate) {
     try {
-      const iso = new Date(b.deadline).toISOString();
-      req.body.dueDate = iso;
+      const d = new Date(out.deadline);
+      if (!Number.isNaN(d.getTime())) {
+        out.dueDate = d.toISOString();
+      } else {
+        out.dueDate = out.deadline; // lasă validatorul să raporteze format invalid
+      }
     } catch {
-      // lăsăm validarea să prindă formatul invalid
-      req.body.dueDate = b.deadline;
+      out.dueDate = out.deadline;
     }
   }
-  // scoate aliasul ca să nu mai încurce
-  if ("deadline" in req.body) delete req.body.deadline;
+  if ("deadline" in out) delete out.deadline;
 
-  // normalize priority (low/medium/high)
-  if (typeof b.priority !== "undefined") {
-    const p = String(b.priority || "").toLowerCase();
-    if (["low", "medium", "high"].includes(p)) {
-      req.body.priority = p;
+  // --- dueDate gol -> elimină (ca să treacă validatorul optional) ---
+  if (out.dueDate === "") delete out.dueDate;
+
+  // --- priority: normalizează aliasuri comune ---
+  if (typeof out.priority !== "undefined") {
+    const p = String(out.priority || "")
+      .toLowerCase()
+      .trim();
+    const map = { "without priority": "low", without: "low", none: "low" };
+    const normalized = map[p] || p;
+    if (["low", "medium", "high"].includes(normalized)) {
+      out.priority = normalized;
     } else {
-      // dacă vine "without priority"/"none", îl scoatem => va rămâne nedefinit
-      delete req.body.priority;
+      // dacă vine ceva nevalid, scoatem câmpul (validatorul e optional)
+      delete out.priority;
     }
   }
 
+  req.body = out;
   next();
 };
 
@@ -241,5 +265,5 @@ const validations = {
 module.exports = {
   validations,
   validate,
-  normalizeCardBody, // ← IMPORTANT
+  normalizeCardBody,
 };
