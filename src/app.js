@@ -1,5 +1,5 @@
 /**
- * app.js — Express app
+ * app.js — Express app (CORS simplu, fără cookies)
  */
 const express = require("express");
 const cors = require("cors");
@@ -8,13 +8,12 @@ const morgan = require("morgan");
 const path = require("path");
 const dotenv = require("dotenv");
 
-// ---------- ENV LOADING (per environment) ----------
+// ---------- ENV ----------
 const envName = process.env.NODE_ENV || "development";
 const envPath = path.resolve(process.cwd(), `.env.${envName}`);
-dotenv.config({ path: envPath }); // load .env.development / .env.production first
-dotenv.config(); // then load plain .env as fallback
+dotenv.config({ path: envPath });
+dotenv.config();
 
-// ---------- CONFIG VALIDATION ----------
 const { validateAppConfig } = require("./utils/validateConfig");
 try {
   validateAppConfig();
@@ -30,37 +29,27 @@ const boardRoutes = require("./routes/boardRoutes");
 const columnRoutes = require("./routes/columnRoutes");
 const cardRoutes = require("./routes/cardRoutes");
 const needHelpRoutes = require("./routes/needHelpRoutes");
-
-// ---------- SWAGGER ----------
 const setupSwagger = require("./docs/swagger");
-
-// ---------- ERROR MIDDLEWARE ----------
 const { notFound, errorHandler } = require("./middlewares/errorMiddleware");
 
 // ---------- APP ----------
 const app = express();
-
-// Dacă aplicația e în spatele unui proxy (Render/Heroku/NGINX) e necesar pentru cookie-uri Secure
 app.set("trust proxy", 1);
 
 // ---------- SECURITY HEADERS ----------
 app.use(
   helmet({
-    // permite încărcarea cross-origin a imaginilor/fonturilor/scripturilor (GitHub Pages → API)
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 
-// ---------- CORS (ÎNAINTE DE RUTE!) ----------
+// ---------- CORS (ÎNAINTE DE RUTE) ----------
 const parseCsv = (v) =>
   (v || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 
-// NU pune URL-ul backend-ului aici.
-// Adaugă în Render: FRONTEND_URL=https://abiatar-cosma.github.io
-// sau CORS_ORIGINS= https://abiatar-cosma.github.io, http://localhost:3000, ...
 const allowedOrigins = Array.from(
   new Set(
     [
@@ -73,15 +62,14 @@ const allowedOrigins = Array.from(
   )
 );
 
-// dacă nu folosești cookie-uri cross-site, poți seta credentials:false în loc de true
+// fără cookies cross-site
 const corsOptions = {
   origin(origin, cb) {
-    // permită tool-urile fără header Origin (curl/Postman/healthz)
+    // permită tool-uri fără Origin (curl/Postman/healthz)
     if (!origin) return cb(null, true);
-    if (allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error(`Origin ${origin} not allowed by CORS`));
+    return cb(null, allowedOrigins.includes(origin));
   },
-  credentials: true, // pune true doar dacă ai cookies; altfel folosește false
+  credentials: false, // ⬅️ IMPORTANT
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   optionsSuccessStatus: 204,
@@ -89,10 +77,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-// preflight global
 app.options("*", cors(corsOptions));
-
-// (opțional) vezi în log-uri originile acceptate
 console.log("CORS allowedOrigins:", allowedOrigins);
 
 // ---------- LOGGING ----------
@@ -100,14 +85,14 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
-// ---------- BODY PARSERS (ÎNAINTE DE RUTE) ----------
+// ---------- BODY PARSERS ----------
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // ---------- STATIC ----------
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-// ---------- SWAGGER UI ----------
+// ---------- SWAGGER ----------
 setupSwagger(app);
 
 // ---------- HEALTHCHECK ----------
@@ -130,7 +115,7 @@ app.use("/api/boards", boardRoutes);
 app.use("/api/columns", columnRoutes);
 app.use("/api/cards", cardRoutes);
 
-// ---------- 404 + ERROR HANDLERS ----------
+// ---------- ERRORS ----------
 app.use(notFound);
 app.use(errorHandler);
 
