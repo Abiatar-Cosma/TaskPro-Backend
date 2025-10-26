@@ -19,7 +19,6 @@ const { validateAppConfig } = require("./utils/validateConfig");
 try {
   validateAppConfig();
 } catch (err) {
-  // Fail fast if critical configuration is missing
   console.error(`Application startup failed: ${err.message}`);
   process.exit(1);
 }
@@ -41,44 +40,48 @@ const { notFound, errorHandler } = require("./middlewares/errorMiddleware");
 // ---------- APP ----------
 const app = express();
 
-// If app is behind a proxy (Render/Heroku/NGINX), this is required for Secure cookies
+// Dacă aplicația e în spatele unui proxy (Render/Heroku/NGINX) e necesar pentru cookie-uri Secure
 app.set("trust proxy", 1);
 
 // ---------- SECURITY HEADERS ----------
 app.use(
   helmet({
-    // allow images/fonts/scripts requested cross-origin (GitHub Pages → your API)
+    // permite încărcarea cross-origin a imaginilor/fonturilor/scripturilor (GitHub Pages → API)
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 
-// ---------- CORS (BEFORE ROUTES!) ----------
+// ---------- CORS (ÎNAINTE DE RUTE!) ----------
 const parseCsv = (v) =>
   (v || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 
-// Build allowed origins list (NO backend URL here)
+// NU pune URL-ul backend-ului aici.
+// Adaugă în Render: FRONTEND_URL=https://abiatar-cosma.github.io
+// sau CORS_ORIGINS= https://abiatar-cosma.github.io, http://localhost:3000, ...
 const allowedOrigins = Array.from(
   new Set(
     [
+      "https://abiatar-cosma.github.io",
       "http://localhost:3000",
       "http://127.0.0.1:3000",
-      process.env.FRONTEND_URL, // e.g. https://abiatar-cosma.github.io
-      ...parseCsv(process.env.CORS_ORIGINS), // e.g. https://abiatar-cosma.github.io,http://localhost:3000
+      process.env.FRONTEND_URL,
+      ...parseCsv(process.env.CORS_ORIGINS),
     ].filter(Boolean)
   )
 );
 
+// dacă nu folosești cookie-uri cross-site, poți seta credentials:false în loc de true
 const corsOptions = {
   origin(origin, cb) {
-    // Allow tools without Origin (curl/Postman)
+    // permită tool-urile fără header Origin (curl/Postman/healthz)
     if (!origin) return cb(null, true);
     if (allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error(`Origin ${origin} not allowed by CORS`));
   },
-  credentials: true, // set true only if you use cookies; harmless otherwise
+  credentials: true, // pune true doar dacă ai cookies; altfel folosește false
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   optionsSuccessStatus: 204,
@@ -86,15 +89,18 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-// Make sure every preflight gets a proper CORS response
+// preflight global
 app.options("*", cors(corsOptions));
+
+// (opțional) vezi în log-uri originile acceptate
+console.log("CORS allowedOrigins:", allowedOrigins);
 
 // ---------- LOGGING ----------
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
-// ---------- BODY PARSERS (BEFORE ROUTES) ----------
+// ---------- BODY PARSERS (ÎNAINTE DE RUTE) ----------
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
