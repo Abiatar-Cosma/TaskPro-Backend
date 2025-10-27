@@ -84,12 +84,12 @@ const validations = {
       .withMessage("Invalid column ID format"),
 
     // <- AICI e problema la tine în producție: rulează o variantă veche
+    // în validateCardCreate:
     check("priority")
-      .optional({ nullable: true })
-      .isString()
-      .withMessage("Priority must be a string")
-      .trim()
-      .toLowerCase()
+      .optional()
+      .customSanitizer((v) =>
+        typeof v === "string" ? v.trim().toLowerCase() : v
+      )
       .isIn(["low", "medium", "high"])
       .withMessage("Priority must be low, medium, or high"),
 
@@ -111,11 +111,10 @@ const validations = {
       .withMessage("Description cannot exceed 500 characters"),
 
     check("priority")
-      .optional({ nullable: true })
-      .isString()
-      .withMessage("Priority must be a string")
-      .trim()
-      .toLowerCase()
+      .optional()
+      .customSanitizer((v) =>
+        typeof v === "string" ? v.trim().toLowerCase() : v
+      )
       .isIn(["low", "medium", "high"])
       .withMessage("Priority must be low, medium, or high"),
 
