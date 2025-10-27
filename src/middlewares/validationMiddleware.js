@@ -1,10 +1,7 @@
+// src/middlewares/validationMiddleware.js
 const { check, validationResult } = require("express-validator");
 
-/**
- * Middleware pentru procesarea rezultatelor validării
- * @param {Array} validations - Array de reguli de validare
- * @returns {Array} - Middleware-uri pentru validare și procesare rezultate
- */
+/** Împachetează validările și returnează JSON prietenos */
 const validate = (validations) => {
   return [
     ...validations,
@@ -25,46 +22,40 @@ const validate = (validations) => {
 };
 
 /**
- * Normalizează body-ul cardului:
- * - acceptă alias-uri pentru column: columnId / column_id / colId -> column
- * - acceptă `deadline` ca alias pentru `dueDate` (transformă în ISO dacă se poate)
- * - normalizează `priority` la: low/medium/high (valori ca 'none', 'without' devin low)
- * - face trim pe title/description
+ * Normalizează body pentru card:
+ * - alias pt coloană: columnId / column_id / colId → column
+ * - alias pt dată: deadline → dueDate (ISO dacă posibil)
+ * - normalizează priority ('without priority'/'none' → 'low')
+ * - face trim la title/description
  */
 const normalizeCardBody = (req, _res, next) => {
   const b = req.body || {};
   const out = { ...b };
 
-  // --- alias pentru column ---
+  // —— column aliase —— //
   out.column = out.column || out.columnId || out.column_id || out.colId;
   delete out.columnId;
   delete out.column_id;
   delete out.colId;
 
-  // --- title/description: trim ---
+  // —— trim —— //
   if (typeof out.title === "string") out.title = out.title.trim();
   if (typeof out.description === "string")
     out.description = out.description.trim();
 
-  // --- deadline -> dueDate (dacă dueDate nu e deja setat) ---
+  // —— deadline → dueDate —— //
   if (out.deadline && !out.dueDate) {
     try {
       const d = new Date(out.deadline);
-      if (!Number.isNaN(d.getTime())) {
-        out.dueDate = d.toISOString();
-      } else {
-        out.dueDate = out.deadline; // lasă validatorul să raporteze format invalid
-      }
+      out.dueDate = Number.isNaN(d.getTime()) ? out.deadline : d.toISOString();
     } catch {
       out.dueDate = out.deadline;
     }
   }
   if ("deadline" in out) delete out.deadline;
-
-  // --- dueDate gol -> elimină (ca să treacă validatorul optional) ---
   if (out.dueDate === "") delete out.dueDate;
 
-  // --- priority: normalizează aliasuri comune ---
+  // —— priority normalize —— //
   if (typeof out.priority !== "undefined") {
     const p = String(out.priority || "")
       .toLowerCase()
@@ -74,8 +65,7 @@ const normalizeCardBody = (req, _res, next) => {
     if (["low", "medium", "high"].includes(normalized)) {
       out.priority = normalized;
     } else {
-      // dacă vine ceva nevalid, scoatem câmpul (validatorul e optional)
-      delete out.priority;
+      delete out.priority; // invalid → scoatem (e optional oricum)
     }
   }
 
@@ -84,33 +74,26 @@ const normalizeCardBody = (req, _res, next) => {
 };
 
 const validations = {
-  // Board validations
+  // Boards
   validateBoardCreate: [
     check("title")
       .notEmpty()
       .withMessage("Title is required")
       .isLength({ min: 3, max: 50 })
       .withMessage("Title must be between 3 and 50 characters"),
-    check("icon").optional().isString().withMessage("Icon must be a string"),
-    check("background")
-      .optional()
-      .isString()
-      .withMessage("Background must be a string"),
+    check("icon").optional().isString(),
+    check("background").optional().isString(),
   ],
-
   validateBoardUpdate: [
     check("title")
       .optional()
       .isLength({ min: 3, max: 50 })
       .withMessage("Title must be between 3 and 50 characters"),
-    check("icon").optional().isString().withMessage("Icon must be a string"),
-    check("background")
-      .optional()
-      .isString()
-      .withMessage("Background must be a string"),
+    check("icon").optional().isString(),
+    check("background").optional().isString(),
   ],
 
-  // Column validations
+  // Columns
   validateColumnCreate: [
     check("title")
       .notEmpty()
@@ -123,7 +106,6 @@ const validations = {
       .isMongoId()
       .withMessage("Invalid board ID format"),
   ],
-
   validateColumnUpdate: [
     check("title")
       .notEmpty()
@@ -132,7 +114,7 @@ const validations = {
       .withMessage("Title must be between 3 and 50 characters"),
   ],
 
-  // Card validations
+  // Cards
   validateCardCreate: [
     check("title")
       .notEmpty()
@@ -157,7 +139,6 @@ const validations = {
       .isISO8601()
       .withMessage("Due date must be a valid date"),
   ],
-
   validateCardUpdate: [
     check("title")
       .optional()
@@ -176,7 +157,6 @@ const validations = {
       .isISO8601()
       .withMessage("Due date must be a valid date"),
   ],
-
   validateCardMove: [
     check("newColumnId")
       .notEmpty()
@@ -189,7 +169,7 @@ const validations = {
       .withMessage("Position must be a positive integer"),
   ],
 
-  // Authentication validations
+  // Auth
   validateRegistration: [
     check("name")
       .notEmpty()
@@ -208,7 +188,6 @@ const validations = {
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters"),
   ],
-
   validateLogin: [
     check("email")
       .notEmpty()
@@ -218,7 +197,6 @@ const validations = {
       .normalizeEmail(),
     check("password").notEmpty().withMessage("Password is required"),
   ],
-
   validatePasswordReset: [
     check("token").notEmpty().withMessage("Token is required"),
     check("password")
@@ -227,7 +205,6 @@ const validations = {
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters"),
   ],
-
   validateProfileUpdate: [
     check("name")
       .optional()
@@ -239,7 +216,6 @@ const validations = {
       .withMessage("Please enter a valid email")
       .normalizeEmail(),
   ],
-
   validateThemeUpdate: [
     check("theme")
       .notEmpty()
@@ -247,7 +223,6 @@ const validations = {
       .isIn(["light", "dark", "violet"])
       .withMessage("Theme must be one of: light, dark, violet"),
   ],
-
   validateNeedHelp: [
     check("email")
       .notEmpty()
@@ -262,8 +237,4 @@ const validations = {
   ],
 };
 
-module.exports = {
-  validations,
-  validate,
-  normalizeCardBody,
-};
+module.exports = { validations, validate, normalizeCardBody };
