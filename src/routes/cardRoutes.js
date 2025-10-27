@@ -40,15 +40,9 @@ router.use(protect);
  *     Card:
  *       type: object
  *       properties:
- *         _id:
- *           type: string
- *           example: "68fe0db1a1234567890abcde"
- *         title:
- *           type: string
- *           example: "Nou card"
- *         description:
- *           type: string
- *           example: "Card de test"
+ *         _id: { type: string, example: "68fe0db1a1234567890abcde" }
+ *         title: { type: string, example: "Nou card" }
+ *         description: { type: string, example: "Card de test" }
  *         priority:
  *           type: string
  *           enum: [low, medium, high]
@@ -62,18 +56,10 @@ router.use(protect);
  *           type: string
  *           description: "ID-ul coloanei (MongoId)"
  *           example: "6652abcdef34567890123456"
- *         owner:
- *           type: string
- *           example: "6652abcdef34567890123400"
- *         order:
- *           type: integer
- *           example: 0
- *         createdAt:
- *           type: string
- *           format: date-time
- *         updatedAt:
- *           type: string
- *           format: date-time
+ *         owner: { type: string, example: "6652abcdef34567890123400" }
+ *         order: { type: integer, example: 0 }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
  */
 
 /**
@@ -87,8 +73,7 @@ router.use(protect);
  *       - `deadline` este alias pentru `dueDate` (ISO 8601).
  *       Valorile `priority` pot fi `low`/`medium`/`high`. Valori ca `none` sau `without priority` sunt tratate ca „nesetat” (se folosește default intern).
  *     tags: [Cards]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     requestBody:
  *       required: true
  *       content:
@@ -98,20 +83,13 @@ router.use(protect);
  *               - type: object
  *                 required: [title]
  *                 properties:
- *                   title:
- *                     type: string
- *                     example: "Nou card"
- *                   description:
- *                     type: string
- *                     example: "Card de test"
+ *                   title: { type: string, example: "Nou card" }
+ *                   description: { type: string, example: "Card de test" }
  *                   priority:
  *                     type: string
  *                     enum: [low, medium, high]
  *                     example: "medium"
- *                   dueDate:
- *                     type: string
- *                     format: date-time
- *                     example: "2025-07-01T00:00:00.000Z"
+ *                   dueDate: { type: string, format: date-time, example: "2025-07-01T00:00:00.000Z" }
  *                   deadline:
  *                     type: string
  *                     format: date-time
@@ -121,24 +99,15 @@ router.use(protect);
  *                   - type: object
  *                     required: [column]
  *                     properties:
- *                       column:
- *                         type: string
- *                         description: "ID-ul coloanei (MongoId)"
- *                         example: "6652abcdef34567890123456"
+ *                       column: { type: string, description: "ID-ul coloanei (MongoId)", example: "6652abcdef34567890123456" }
  *                   - type: object
  *                     required: [columnId]
  *                     properties:
- *                       columnId:
- *                         type: string
- *                         description: "Alias pentru column (MongoId) — este mapat automat"
- *                         example: "6652abcdef34567890123456"
+ *                       columnId: { type: string, description: "Alias pentru column (MongoId) — este mapat automat", example: "6652abcdef34567890123456" }
  *     responses:
- *       201:
- *         description: Card creat
- *       400:
- *         description: Date invalide
- *       401:
- *         description: Neautorizat
+ *       201: { description: Card creat }
+ *       400: { description: Date invalide }
+ *       401: { description: Neautorizat }
  */
 router.post(
   "/",
@@ -153,22 +122,17 @@ router.post(
  *   get:
  *     summary: Returnează toate cardurile pentru o coloană
  *     tags: [Cards]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     parameters:
  *       - in: path
  *         name: columnId
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *         required: true
  *         description: ID-ul coloanei
  *     responses:
- *       200:
- *         description: Listă carduri
- *       404:
- *         description: Coloană inexistentă
- *       401:
- *         description: Neautorizat
+ *       200: { description: Listă carduri }
+ *       404: { description: Coloană inexistentă }
+ *       401: { description: Neautorizat }
  */
 router.get("/column/:columnId", getCardsByColumnId);
 
@@ -178,22 +142,17 @@ router.get("/column/:columnId", getCardsByColumnId);
  *   get:
  *     summary: Obține un card după ID
  *     tags: [Cards]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     parameters:
  *       - in: path
  *         name: id
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *         required: true
  *         description: ID-ul cardului
  *     responses:
- *       200:
- *         description: Cardul a fost găsit cu succes
- *       401:
- *         description: Neautorizat
- *       404:
- *         description: Cardul nu a fost găsit
+ *       200: { description: Cardul a fost găsit cu succes }
+ *       401: { description: Neautorizat }
+ *       404: { description: Cardul nu a fost găsit }
  */
 router.get("/:id", getCardById);
 
@@ -202,24 +161,19 @@ router.get("/:id", getCardById);
  * /api/cards/{id}:
  *   put:
  *     summary: Actualizează un card (complet)
- *     description: Update pentru title/description/priority/dueDate. Acceptă și `deadline` ca alias pentru `dueDate`.
+ *     description: Update pentru title/description/priority/dueDate. Acceptă și `deadline` ca alias.
  *     tags: [Cards]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *         description: Card ID
  *     responses:
- *       200:
- *         description: Card updated successfully
- *       400:
- *         description: Invalid input
- *       404:
- *         description: Card not found
+ *       200: { description: Card updated successfully }
+ *       400: { description: Invalid input }
+ *       404: { description: Card not found }
  */
 router.put(
   "/:id",
@@ -235,22 +189,17 @@ router.put(
  *     summary: Actualizează parțial un card
  *     description: Acceptă subset din title/description/priority/dueDate (alias deadline acceptat).
  *     tags: [Cards]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *         description: Card ID
  *     responses:
- *       200:
- *         description: Card updated successfully
- *       400:
- *         description: Invalid input
- *       404:
- *         description: Card not found
+ *       200: { description: Card updated successfully }
+ *       400: { description: Invalid input }
+ *       404: { description: Card not found }
  */
 router.patch(
   "/:id",
@@ -265,15 +214,11 @@ router.patch(
  *   patch:
  *     summary: Update the order of cards in a column
  *     tags: [Cards]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     responses:
- *       200:
- *         description: Order updated successfully
- *       400:
- *         description: Invalid input
- *       404:
- *         description: Column or card not found
+ *       200: { description: Order updated successfully }
+ *       400: { description: Invalid input }
+ *       404: { description: Column or card not found }
  */
 const validateCardsReorderLocal = [
   check("columnId")
@@ -301,22 +246,17 @@ router.patch("/reorder", validate(validateCardsReorderLocal), updateCardsOrder);
  *   patch:
  *     summary: Move a card to another column
  *     tags: [Cards]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *         description: Card ID to move
  *     responses:
- *       200:
- *         description: Card moved successfully
- *       400:
- *         description: Invalid input
- *       404:
- *         description: Card or column not found
+ *       200: { description: Card moved successfully }
+ *       400: { description: Invalid input }
+ *       404: { description: Card or column not found }
  */
 router.patch(
   "/:id/move",
@@ -330,20 +270,16 @@ router.patch(
  *   delete:
  *     summary: Șterge un card
  *     tags: [Cards]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *         description: Card ID
  *     responses:
- *       204:
- *         description: Card deleted
- *       404:
- *         description: Card not found
+ *       204: { description: Card deleted }
+ *       404: { description: Card not found }
  */
 router.delete("/:id", deleteCard);
 

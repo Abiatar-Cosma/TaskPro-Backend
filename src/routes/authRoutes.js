@@ -17,7 +17,7 @@ const {
 const { protect } = require("../middlewares/authMiddleware");
 const {
   validations,
-  validate
+  validate,
 } = require("../middlewares/validationMiddleware");
 
 const router = express.Router();
@@ -41,22 +41,14 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
+ *             required: [name, email, password]
  *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
+ *               name: { type: string }
+ *               email: { type: string }
+ *               password: { type: string }
  *     responses:
- *       201:
- *         description: User registered successfully
- *       400:
- *         description: User already exists or invalid input
+ *       201: { description: User registered successfully }
+ *       400: { description: User already exists or invalid input }
  */
 router.post("/register", validate(validations.validateRegistration), register);
 
@@ -72,19 +64,13 @@ router.post("/register", validate(validations.validateRegistration), register);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
- *               - password
+ *             required: [email, password]
  *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
+ *               email: { type: string }
+ *               password: { type: string }
  *     responses:
- *       200:
- *         description: Login successful
- *       401:
- *         description: Invalid credentials
+ *       200: { description: Login successful }
+ *       401: { description: Invalid credentials }
  */
 router.post("/login", validate(validations.validateLogin), login);
 
@@ -94,25 +80,21 @@ router.post("/login", validate(validations.validateLogin), login);
  *   post:
  *     summary: Logout user and invalidate token
  *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - refreshToken
+ *             required: [refreshToken]
  *             properties:
  *               refreshToken:
  *                 type: string
  *                 description: Refresh token primit la login
  *     responses:
- *       200:
- *         description: Logged out successfully
- *       401:
- *         description: Unauthorized or session not found
+ *       200: { description: Logged out successfully }
+ *       401: { description: Unauthorized or session not found }
  */
 router.post("/logout", protect, logout);
 
@@ -122,8 +104,7 @@ router.post("/logout", protect, logout);
  *   post:
  *     summary: Refresh user data using token
  *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     requestBody:
  *       required: false
  *       content:
@@ -131,13 +112,10 @@ router.post("/logout", protect, logout);
  *           schema:
  *             type: object
  *             properties:
- *               refreshToken:
- *                 type: string
+ *               refreshToken: { type: string }
  *     responses:
- *       200:
- *         description: Token refreshed successfully
- *       401:
- *         description: Unauthorized
+ *       200: { description: Token refreshed successfully }
+ *       401: { description: Unauthorized }
  */
 router.post("/refresh", protect, refreshUser);
 
@@ -147,13 +125,10 @@ router.post("/refresh", protect, refreshUser);
  *   get:
  *     summary: Get current authenticated user
  *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
+ *     security: [ { bearerAuth: [] } ]
  *     responses:
- *       200:
- *         description: Returns current user info
- *       401:
- *         description: Unauthorized
+ *       200: { description: Returns current user info }
+ *       401: { description: Unauthorized }
  */
 router.get("/me", protect, getCurrentUser);
 
@@ -164,11 +139,11 @@ router.get("/me", protect, getCurrentUser);
  *     summary: Start Google OAuth login
  *     tags: [Auth]
  *     responses:
- *       302:
- *         description: Redirect to Google for authentication
+ *       302: { description: Redirect to Google for authentication }
  */
-router.get('/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
+router.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
 /**
@@ -180,39 +155,27 @@ router.get('/google',
  *     responses:
  *       200:
  *         description: Google authentication successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 user:
- *                   type: object
- *                 token:
- *                   type: string
  *       401:
  *         description: Authentication failed
  */
-router.get('/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: '/' }),
+router.get(
+  "/google/callback",
+  passport.authenticate("google", { session: false, failureRedirect: "/" }),
   async (req, res) => {
-    // Generează JWT și returnează-l
-    const token = jwt.sign(
-      { id: req.user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "20d" }
-    );
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "20d",
+    });
     res.json({
       user: {
         _id: req.user._id,
         name: req.user.name,
         email: req.user.email,
         theme: req.user.theme,
-        profileImage: req.user.profileImage
+        profileImage: req.user.profileImage,
       },
-      token
+      token,
     });
-    //  Redirect spre frontend: 
-    // res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}`)
+    // sau: res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}`)
   }
 );
 
