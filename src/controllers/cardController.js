@@ -9,15 +9,14 @@ const {
 /* ---------------------------
  * Helpers
  * --------------------------- */
+// în același fișier
 const normalizePriority = (p) => {
-  if (p == null || p === "") return undefined;
-  const map = { "without priority": "low", without: "low", none: "low" };
-  const val = map[String(p).toLowerCase()] || String(p).toLowerCase();
-  const ok = ["low", "medium", "high"].includes(val);
-  if (!ok) {
-    throw new BadRequestError("Invalid priority. Allowed: low, medium, high.");
-  }
-  return val;
+  if (p == null || p === "") return "low";
+  const s = String(p).trim().toLowerCase();
+  if (["without", "without priority", "none"].includes(s)) return "low";
+  if (["low", "medium", "high"].includes(s)) return s;
+  // fallback gentil, nu aruncăm eroare
+  return "low";
 };
 
 const normalizeDueDate = (payload) => {
@@ -66,12 +65,14 @@ exports.createCard = async (req, res, next) => {
 
     // Dacă modelul Column ARE owner, lasă așa:
     if (col.owner && String(col.owner) !== String(userId)) {
-      throw new ForbiddenError("You do not have permission to add cards to this column");
+      throw new ForbiddenError(
+        "You do not have permission to add cards to this column"
+      );
     }
 
     // 3) Calculează order la finalul coloanei
     const countInColumn = await Card.countDocuments({ column });
-    const priority = normalizePriority(body.priority) ?? "low";
+    const priority = normalizePriority(body.priority);
 
     const card = await Card.create({
       title: title.trim(),
@@ -79,7 +80,7 @@ exports.createCard = async (req, res, next) => {
       priority,
       dueDate: body.dueDate, // poate fi null sau Date
       column,
-      order: countInColumn,  // la final
+      order: countInColumn, // la final
       owner: userId,
     });
 
@@ -108,7 +109,10 @@ exports.getCardsByColumnId = async (req, res, next) => {
       );
     }
 
-    const cards = await Card.find({ column: columnId }).sort({ order: 1, createdAt: 1 });
+    const cards = await Card.find({ column: columnId }).sort({
+      order: 1,
+      createdAt: 1,
+    });
 
     res.status(200).json({
       status: "success",
@@ -161,23 +165,17 @@ exports.updateCard = async (req, res, next) => {
     const card = await Card.findById(id);
     if (!card) throw new NotFoundError("Card not found");
     if (String(card.owner) !== String(req.user.id)) {
-      throw new ForbiddenError("You do not have permission to update this card");
+      throw new ForbiddenError(
+        "You do not have permission to update this card"
+      );
     }
 
     // 3) Doar câmpuri permise
     const allowed = ["title", "description", "priority", "labels", "dueDate"];
 
     for (const field of allowed) {
-      if (Object.prototype.hasOwnProperty.call(body, field)) {
-        if (field === "priority") {
-          const p = normalizePriority(body.priority);
-          if (p !== undefined) card.priority = p;
-        } else if (field === "dueDate") {
-          // body.dueDate este deja null sau Date din normalizeDueDate
-          card.dueDate = body.dueDate ?? undefined;
-        } else {
-          card[field] = body[field];
-        }
+      if (Object.prototype.hasOwnProperty.call(body, "priority")) {
+        card.priority = normalizePriority(body.priority);
       }
     }
 
@@ -203,7 +201,9 @@ exports.deleteCard = async (req, res, next) => {
     }
 
     if (String(card.owner) !== String(req.user.id)) {
-      throw new ForbiddenError("You do not have permission to delete this card");
+      throw new ForbiddenError(
+        "You do not have permission to delete this card"
+      );
     }
 
     await Card.findByIdAndDelete(id);
@@ -286,8 +286,13 @@ exports.moveCardToColumn = async (req, res, next) => {
       throw new NotFoundError("Destination column not found");
     }
 
-    if (destinationColumn.owner && String(destinationColumn.owner) !== String(req.user.id)) {
-      throw new ForbiddenError("You do not have permission to add cards to this column");
+    if (
+      destinationColumn.owner &&
+      String(destinationColumn.owner) !== String(req.user.id)
+    ) {
+      throw new ForbiddenError(
+        "You do not have permission to add cards to this column"
+      );
     }
 
     const sourceColumnId = card.column;

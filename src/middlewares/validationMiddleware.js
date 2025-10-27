@@ -1,5 +1,5 @@
 // src/middlewares/validationMiddleware.js
-const { check, validationResult } = require("express-validator");
+const { validationResult, check } = require("express-validator");
 
 const validate = (rules) => {
   const list = Array.isArray(rules) ? rules : rules ? [rules] : [];
@@ -19,21 +19,22 @@ const validate = (rules) => {
     },
   ];
 };
+
 /**
  * Normalizează body-ul cardului:
  * - acceptă `columnId` / `column_id` / `colId` ca alias pentru `column`
  * - acceptă `deadline` ca alias pentru `dueDate`
- * - normalizează `priority`: trim + lower; „without priority”/„none” => eliminat (folosește default)
+ * - normalizează `priority` doar la nivel de string (NU validăm aici)
  */
 const normalizeCardBody = (req, _res, next) => {
   const b = req.body || {};
 
-  // aliasuri column
+  // columnId alias → column
   const colAlias =
     b.column ?? b.columnId ?? b.column_id ?? b.colId ?? b.col_id ?? undefined;
   if (colAlias) req.body.column = String(colAlias).trim();
 
-  // deadline -> dueDate
+  // deadline -> dueDate (doar dacă dueDate nu e deja setat)
   if (b.deadline && !b.dueDate) {
     try {
       req.body.dueDate = new Date(b.deadline).toISOString();
@@ -43,20 +44,17 @@ const normalizeCardBody = (req, _res, next) => {
   }
   if ("deadline" in req.body) delete req.body.deadline;
 
-  // priority
-  if (typeof b.priority !== "undefined") {
-    const p = String(b.priority).trim().toLowerCase();
-    if (["without", "without priority", "none"].includes(p)) {
-      delete req.body.priority; // lasă default în controller
-    } else if (["low", "medium", "high"].includes(p)) {
-      req.body.priority = p;
-    } else {
-      req.body.priority = String(b.priority).trim(); // las-o să pice la validator
-    }
-  }
-
+  // curățăm dueDate de stringuri goale
   if (typeof req.body.dueDate !== "undefined" && req.body.dueDate === "") {
     req.body.dueDate = null;
+  }
+
+  // doar sanităm textual priority (fără rules aici)
+  if (typeof b.priority !== "undefined") {
+    req.body.priority =
+      typeof b.priority === "string"
+        ? b.priority.trim().toLowerCase()
+        : b.priority;
   }
 
   next();
@@ -83,13 +81,7 @@ const validations = {
       .isMongoId()
       .withMessage("Invalid column ID format"),
 
-    // <- AICI e problema la tine în producție: rulează o variantă veche
-    // în validateCardCreate:
-    check("priority")
-      .optional()
-      .isIn(["low", "medium", "high"])
-      .withMessage("Priority must be low, medium, or high"),
-
+    // 🔥 priority scos din validator aici
     check("dueDate")
       .optional({ nullable: true })
       .isISO8601()
@@ -107,11 +99,7 @@ const validations = {
       .isLength({ max: 500 })
       .withMessage("Description cannot exceed 500 characters"),
 
-    check("priority")
-      .optional()
-      .isIn(["low", "medium", "high"])
-      .withMessage("Priority must be low, medium, or high"),
-
+    // 🔥 priority scos și de aici
     check("dueDate")
       .optional({ nullable: true })
       .isISO8601()
