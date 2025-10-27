@@ -1,9 +1,7 @@
 const { check, validationResult } = require("express-validator");
 
 /**
- * Middleware pentru procesarea rezultatelor validării
- * @param {Array} validations - Array de reguli de validare
- * @returns {Array} - Middleware-uri pentru validare și procesare rezultate
+ * Middleware generic care rulează un set de validări și întoarce erorile în format consistent.
  */
 const validate = (validations) => {
   return [
@@ -25,45 +23,43 @@ const validate = (validations) => {
 };
 
 /**
- * Normalizează body-ul cardului:
- * - acceptă `deadline` ca alias pentru `dueDate` (în ISO)
- * - normalizează `priority` la: low/medium/high; valori precum `none`/`without priority` sunt scoase
- * - acceptă alias-uri pentru column: `columnId`, `column_id`, `colId`
+ * Normalizează body-ul cererii pentru carduri/coloane/board:
+ *  - Acceptă aliasuri:
+ *      * columnId / column_id / colId  -> column
+ *      * deadline -> dueDate (ISO)
+ *  - Normalizează priority:
+ *      * "without priority" / "none" / "without" -> elimină (va folosi defaultul din backend = "low")
+ *      * "low" | "medium" | "high" -> lowercase curat
  */
 const normalizeCardBody = (req, _res, next) => {
   const b = req.body || {};
 
-  // ---- column aliases -> column
-  const aliasColumn =
-    b.column || b.columnId || b.column_id || b.colId || undefined;
-  if (aliasColumn) req.body.column = aliasColumn;
-  // curățăm alias-urile ca să nu mai ajungă la validare
-  delete req.body.columnId;
-  delete req.body.column_id;
-  delete req.body.colId;
+  // === column aliases -> column
+  const colAlias = b.column ?? b.columnId ?? b.column_id ?? b.colId ?? null;
 
-  // ---- deadline -> dueDate (dacă dueDate nu e deja setat)
+  if (colAlias) {
+    req.body.column = String(colAlias).trim();
+  }
+
+  // === deadline -> dueDate (ISO dacă e valid)
   if (b.deadline && !b.dueDate) {
-    try {
-      const iso = new Date(b.deadline).toISOString();
-      req.body.dueDate = iso;
-    } catch {
-      req.body.dueDate = b.deadline; // lăsăm validarea să prindă formatul invalid
-    }
+    const d = new Date(b.deadline);
+    req.body.dueDate = Number.isNaN(d.getTime()) ? b.deadline : d.toISOString();
   }
   if ("deadline" in req.body) delete req.body.deadline;
 
-  // ---- normalize priority (low/medium/high) sau elimină
+  // === priority sanitize/normalize
   if (typeof b.priority !== "undefined") {
     const p = String(b.priority || "")
       .trim()
       .toLowerCase();
     if (["low", "medium", "high"].includes(p)) {
       req.body.priority = p;
-    } else if (["without", "without priority", "none", ""].includes(p)) {
-      delete req.body.priority; // va aplica default în controller
+    } else if (["none", "without", "without priority", ""].includes(p)) {
+      // scoatem complet -> cade pe default în controller/model
+      delete req.body.priority;
     } else {
-      // lăsăm validarea să arate eroarea
+      // lăsăm validatorul să raporteze dacă vine altceva exotic
       req.body.priority = p;
     }
   }
@@ -72,7 +68,7 @@ const normalizeCardBody = (req, _res, next) => {
 };
 
 const validations = {
-  // -------- Boards ----------
+  /* ---------------- Boards ---------------- */
   validateBoardCreate: [
     check("title")
       .notEmpty()
@@ -85,6 +81,7 @@ const validations = {
       .isString()
       .withMessage("Background must be a string"),
   ],
+
   validateBoardUpdate: [
     check("title")
       .optional()
@@ -97,7 +94,7 @@ const validations = {
       .withMessage("Background must be a string"),
   ],
 
-  // -------- Columns ----------
+  /* ---------------- Columns ---------------- */
   validateColumnCreate: [
     check("title")
       .notEmpty()
@@ -110,6 +107,7 @@ const validations = {
       .isMongoId()
       .withMessage("Invalid board ID format"),
   ],
+
   validateColumnUpdate: [
     check("title")
       .notEmpty()
@@ -118,8 +116,7 @@ const validations = {
       .withMessage("Title must be between 3 and 50 characters"),
   ],
 
-  // -------- Cards ----------
-  // !!! Sanitizăm priority aici ca să nu mai existe reject eronat
+  /* ---------------- Cards ---------------- */
   validateCardCreate: [
     check("title")
       .notEmpty()
@@ -130,19 +127,31 @@ const validations = {
       .optional()
       .isLength({ max: 500 })
       .withMessage("Description cannot exceed 500 characters"),
+
+    // Acceptăm doar câmpul final "column" (aliasurile sunt rezolvate în normalizeCardBody)
     check("column")
       .notEmpty()
       .withMessage("Column ID is required")
       .isMongoId()
       .withMessage("Invalid column ID format"),
+
+    // Priority: sanitizăm și validăm robust (după normalizeCardBody încă o dată)
     check("priority")
-      .optional()
-      .isString()
-      .withMessage("Priority must be a string")
-      .trim()
-      .toLowerCase()
-      .isIn(["low", "medium", "high"])
-      .withMessage("Priority must be low, medium, or high"),
+      .optional({ nullable: true })
+      .customSanitizer((v) =>
+        String(v || "")
+          .trim()
+          .toLowerCase()
+      )
+      .custom((v) => {
+        // dacă lipsește după normalize, e ok -> controller pune default
+        if (!v) return true;
+        // doar low/medium/high permise explicit
+        if (["low", "medium", "high"].includes(v)) return true;
+        // „none/without” NU mai intră aici (normalizeCardBody le șterge)
+        throw new Error("Priority must be low, medium, or high");
+      }),
+
     check("dueDate")
       .optional()
       .isISO8601()
@@ -159,20 +168,23 @@ const validations = {
       .isLength({ max: 500 })
       .withMessage("Description cannot exceed 500 characters"),
     check("priority")
-      .optional()
-      .isString()
-      .withMessage("Priority must be a string")
-      .trim()
-      .toLowerCase()
-      .isIn(["low", "medium", "high"])
-      .withMessage("Priority must be low, medium, or high"),
+      .optional({ nullable: true })
+      .customSanitizer((v) =>
+        String(v || "")
+          .trim()
+          .toLowerCase()
+      )
+      .custom((v) => {
+        if (!v) return true;
+        if (["low", "medium", "high"].includes(v)) return true;
+        throw new Error("Priority must be low, medium, or high");
+      }),
     check("dueDate")
       .optional()
       .isISO8601()
       .withMessage("Due date must be a valid date"),
   ],
 
-  // -------- Move / Reorder ----------
   validateCardMove: [
     check("newColumnId")
       .notEmpty()
@@ -185,20 +197,7 @@ const validations = {
       .withMessage("Position must be a positive integer"),
   ],
 
-  validateNeedHelp: [
-    check("email")
-      .notEmpty()
-      .withMessage("Email is required")
-      .isEmail()
-      .withMessage("Invalid email format"),
-    check("comment")
-      .notEmpty()
-      .withMessage("Comment is required")
-      .isLength({ min: 5, max: 1000 })
-      .withMessage("Comment must be between 5 and 1000 characters"),
-  ],
-
-  // -------- Auth ----------
+  /* ---------------- Auth / Users ---------------- */
   validateRegistration: [
     check("name")
       .notEmpty()
@@ -217,6 +216,7 @@ const validations = {
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters"),
   ],
+
   validateLogin: [
     check("email")
       .notEmpty()
@@ -226,6 +226,7 @@ const validations = {
       .normalizeEmail(),
     check("password").notEmpty().withMessage("Password is required"),
   ],
+
   validatePasswordReset: [
     check("token").notEmpty().withMessage("Token is required"),
     check("password")
@@ -234,6 +235,7 @@ const validations = {
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters"),
   ],
+
   validateProfileUpdate: [
     check("name")
       .optional()
@@ -245,12 +247,26 @@ const validations = {
       .withMessage("Please enter a valid email")
       .normalizeEmail(),
   ],
+
   validateThemeUpdate: [
     check("theme")
       .notEmpty()
       .withMessage("Theme is required")
       .isIn(["light", "dark", "violet"])
       .withMessage("Theme must be one of: light, dark, violet"),
+  ],
+
+  validateNeedHelp: [
+    check("email")
+      .notEmpty()
+      .withMessage("Email is required")
+      .isEmail()
+      .withMessage("Invalid email format"),
+    check("comment")
+      .notEmpty()
+      .withMessage("Comment is required")
+      .isLength({ min: 5, max: 1000 })
+      .withMessage("Comment must be between 5 and 1000 characters"),
   ],
 };
 

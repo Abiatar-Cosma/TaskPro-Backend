@@ -17,20 +17,14 @@ const { protect } = require("../middlewares/authMiddleware");
 const {
   validate,
   validations,
-  normalizeCardBody, // mapează columnId → column, deadline → dueDate, normalizează priority
+  normalizeCardBody,
 } = require("../middlewares/validationMiddleware");
 const { check } = require("express-validator");
 
 const router = express.Router();
 
-/**
- * Toate rutele din acest modul sunt protejate.
- */
+// toate rutele din acest modul sunt protejate
 router.use(protect);
-
-/* -------------------------------------------------------------------------- */
-/*                                   SWAGGER                                   */
-/* -------------------------------------------------------------------------- */
 
 /**
  * @swagger
@@ -91,7 +85,7 @@ router.use(protect);
  *       Creează un card în interiorul unei coloane. Endpoint-ul acceptă **alias-uri**:
  *       - `columnId` (sau `column_id`/`colId`) este mapat automat la `column`.
  *       - `deadline` este alias pentru `dueDate` (ISO 8601).
- *       Valorile `priority` pot fi `low`/`medium`/`high`. Valori ca `none` sau `without priority` sunt tratate ca și cum nu ai trimite `priority` (default intern).
+ *       Valorile `priority` pot fi `low`/`medium`/`high`. Valori ca `none` sau `without priority` sunt tratate ca „nesetat” (se folosește default intern).
  *     tags: [Cards]
  *     security:
  *       - bearerAuth: []
@@ -141,16 +135,6 @@ router.use(protect);
  *     responses:
  *       201:
  *         description: Card creat
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   $ref: '#/components/schemas/Card'
  *       400:
  *         description: Date invalide
  *       401:
@@ -181,18 +165,6 @@ router.post(
  *     responses:
  *       200:
  *         description: Listă carduri
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Card'
  *       404:
  *         description: Coloană inexistentă
  *       401:
@@ -218,16 +190,6 @@ router.get("/column/:columnId", getCardsByColumnId);
  *     responses:
  *       200:
  *         description: Cardul a fost găsit cu succes
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   $ref: '#/components/schemas/Card'
  *       401:
  *         description: Neautorizat
  *       404:
@@ -240,8 +202,7 @@ router.get("/:id", getCardById);
  * /api/cards/{id}:
  *   put:
  *     summary: Actualizează un card (complet)
- *     description: >
- *       Update pentru title/description/priority/dueDate. Acceptă și `deadline` ca alias pentru `dueDate`.
+ *     description: Update pentru title/description/priority/dueDate. Acceptă și `deadline` ca alias pentru `dueDate`.
  *     tags: [Cards]
  *     security:
  *       - bearerAuth: []
@@ -252,45 +213,9 @@ router.get("/:id", getCardById);
  *         schema:
  *           type: string
  *         description: Card ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *                 example: "Update docs"
- *               description:
- *                 type: string
- *                 example: "Document API for frontend"
- *               priority:
- *                 type: string
- *                 enum: [low, medium, high]
- *                 example: "medium"
- *               dueDate:
- *                 type: string
- *                 format: date-time
- *                 example: "2025-07-01T00:00:00.000Z"
- *               deadline:
- *                 type: string
- *                 format: date-time
- *                 description: "Alias pentru dueDate (acceptat pentru compatibilitate)"
- *                 example: "2025-07-01T00:00:00.000Z"
  *     responses:
  *       200:
  *         description: Card updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   $ref: '#/components/schemas/Card'
  *       400:
  *         description: Invalid input
  *       404:
@@ -319,40 +244,9 @@ router.put(
  *         schema:
  *           type: string
  *         description: Card ID
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               description:
- *                 type: string
- *               priority:
- *                 type: string
- *                 enum: [low, medium, high]
- *               dueDate:
- *                 type: string
- *                 format: date-time
- *               deadline:
- *                 type: string
- *                 format: date-time
- *                 description: "Alias pentru dueDate (acceptat pentru compatibilitate)"
  *     responses:
  *       200:
  *         description: Card updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   $ref: '#/components/schemas/Card'
  *       400:
  *         description: Invalid input
  *       404:
@@ -373,31 +267,6 @@ router.patch(
  *     tags: [Cards]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - columnId
- *               - cardOrders
- *             properties:
- *               columnId:
- *                 type: string
- *                 example: "60f1b5c5fc13ae001e000001"
- *               cardOrders:
- *                 type: array
- *                 items:
- *                   type: object
- *                   required: [id, order]
- *                   properties:
- *                     id:
- *                       type: string
- *                       example: "60f6e8d8b54764421c7b9a90"
- *                     order:
- *                       type: integer
- *                       example: 0
  *     responses:
  *       200:
  *         description: Order updated successfully
@@ -441,20 +310,6 @@ router.patch("/reorder", validate(validateCardsReorderLocal), updateCardsOrder);
  *         schema:
  *           type: string
  *         description: Card ID to move
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [newColumnId]
- *             properties:
- *               newColumnId:
- *                 type: string
- *                 example: "60f1b5c5fc13ae001e000001"
- *               newPosition:
- *                 type: integer
- *                 example: 1
  *     responses:
  *       200:
  *         description: Card moved successfully
