@@ -84,14 +84,14 @@ const validations = {
       .withMessage("Invalid column ID format"),
 
     // <- AICI e problema la tine în producție: rulează o variantă veche
-    // check("priority")
-    //   .optional({ nullable: true })
-    //   .isString()
-    //   .withMessage("Priority must be a string")
-    //   .trim()
-    //   .toLowerCase()
-    //   .isIn(["low", "medium", "high"])
-    //   .withMessage("Priority must be low, medium, or high"),
+    check("priority")
+      .optional({ nullable: true })
+      .isString()
+      .withMessage("Priority must be a string")
+      .trim()
+      .toLowerCase()
+      .isIn(["low", "medium", "high"])
+      .withMessage("Priority must be low, medium, or high"),
 
     check("dueDate")
       .optional({ nullable: true })
