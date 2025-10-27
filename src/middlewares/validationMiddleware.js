@@ -87,9 +87,6 @@ const validations = {
     // în validateCardCreate:
     check("priority")
       .optional()
-      .customSanitizer((v) =>
-        typeof v === "string" ? v.trim().toLowerCase() : v
-      )
       .isIn(["low", "medium", "high"])
       .withMessage("Priority must be low, medium, or high"),
 
@@ -112,9 +109,6 @@ const validations = {
 
     check("priority")
       .optional()
-      .customSanitizer((v) =>
-        typeof v === "string" ? v.trim().toLowerCase() : v
-      )
       .isIn(["low", "medium", "high"])
       .withMessage("Priority must be low, medium, or high"),
 
