@@ -111,8 +111,21 @@ router.use(protect);
  */
 router.post(
   "/",
+  // 1) Log brut
+  (req, _res, next) => {
+    console.log("[cards POST] raw body:", req.body);
+    next();
+  },
+  // 2) Normalizează
   normalizeCardBody,
+  // 3) Log după normalize
+  (req, _res, next) => {
+    console.log("[cards POST] normalized body:", req.body);
+    next();
+  },
+  // 4) Validează
   validate(validations.validateCardCreate),
+  // 5) Controller-ul
   createCard
 );
 

@@ -10,17 +10,15 @@ const validate = (rules) => {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           status: "error",
-          errors: errors.array().map((e) => ({
-            field: e.path,
-            message: e.msg,
-          })),
+          errors: errors
+            .array()
+            .map((e) => ({ field: e.path, message: e.msg })),
         });
       }
       next();
     },
   ];
 };
-
 /**
  * Normalizează body-ul cardului:
  * - acceptă `columnId` / `column_id` / `colId` ca alias pentru `column`
@@ -30,37 +28,33 @@ const validate = (rules) => {
 const normalizeCardBody = (req, _res, next) => {
   const b = req.body || {};
 
-  // column alias -> column
+  // aliasuri column
   const colAlias =
     b.column ?? b.columnId ?? b.column_id ?? b.colId ?? b.col_id ?? undefined;
-  if (colAlias) {
-    req.body.column = String(colAlias).trim();
-  }
+  if (colAlias) req.body.column = String(colAlias).trim();
 
-  // deadline -> dueDate (dacă dueDate nu e deja setat)
+  // deadline -> dueDate
   if (b.deadline && !b.dueDate) {
     try {
       req.body.dueDate = new Date(b.deadline).toISOString();
     } catch {
-      req.body.dueDate = b.deadline; // va pica la validator dacă e invalid
+      req.body.dueDate = b.deadline;
     }
   }
   if ("deadline" in req.body) delete req.body.deadline;
 
-  // normalize priority
+  // priority
   if (typeof b.priority !== "undefined") {
     const p = String(b.priority).trim().toLowerCase();
     if (["without", "without priority", "none"].includes(p)) {
-      delete req.body.priority; // => rămâne nedefinit (controller-ul pune default)
+      delete req.body.priority; // lasă default în controller
     } else if (["low", "medium", "high"].includes(p)) {
       req.body.priority = p;
     } else {
-      // lăsăm valorile nonconforme să pice la validator cu mesaj clar
-      req.body.priority = String(b.priority).trim();
+      req.body.priority = String(b.priority).trim(); // las-o să pice la validator
     }
   }
 
-  // curățăm dueDate = "" -> null
   if (typeof req.body.dueDate !== "undefined" && req.body.dueDate === "") {
     req.body.dueDate = null;
   }
@@ -89,15 +83,15 @@ const validations = {
       .isMongoId()
       .withMessage("Invalid column ID format"),
 
-    // IMPORTANT: Acceptăm string, facem trim+lower, apoi isIn
-    check("priority")
-      .optional({ nullable: true })
-      .isString()
-      .withMessage("Priority must be a string")
-      .trim()
-      .toLowerCase()
-      .isIn(["low", "medium", "high"])
-      .withMessage("Priority must be low, medium, or high"),
+    // <- AICI e problema la tine în producție: rulează o variantă veche
+    // check("priority")
+    //   .optional({ nullable: true })
+    //   .isString()
+    //   .withMessage("Priority must be a string")
+    //   .trim()
+    //   .toLowerCase()
+    //   .isIn(["low", "medium", "high"])
+    //   .withMessage("Priority must be low, medium, or high"),
 
     check("dueDate")
       .optional({ nullable: true })
