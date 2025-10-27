@@ -17,14 +17,20 @@ const { protect } = require("../middlewares/authMiddleware");
 const {
   validate,
   validations,
-  normalizeCardBody, // ← IMPORTANT: mapează columnId → column, deadline → dueDate
+  normalizeCardBody, // mapează columnId → column, deadline → dueDate, normalizează priority
 } = require("../middlewares/validationMiddleware");
 const { check } = require("express-validator");
 
 const router = express.Router();
 
-// toate rutele de card necesită autentificare
+/**
+ * Toate rutele din acest modul sunt protejate.
+ */
 router.use(protect);
+
+/* -------------------------------------------------------------------------- */
+/*                                   SWAGGER                                   */
+/* -------------------------------------------------------------------------- */
 
 /**
  * @swagger
@@ -83,9 +89,9 @@ router.use(protect);
  *     summary: Creează un card nou
  *     description: >
  *       Creează un card în interiorul unei coloane. Endpoint-ul acceptă **alias-uri**:
- *       - `columnId` (sau `column_id`/`colId`) este acceptat și mapat intern la `column`.
- *       - `deadline` este acceptat ca alias pentru `dueDate` (ISO 8601).
- *       Valorile `priority` pot fi `low`/`medium`/`high`. Valori ca `none` sau `without priority` vor fi normalizate la `low`.
+ *       - `columnId` (sau `column_id`/`colId`) este mapat automat la `column`.
+ *       - `deadline` este alias pentru `dueDate` (ISO 8601).
+ *       Valorile `priority` pot fi `low`/`medium`/`high`. Valori ca `none` sau `without priority` sunt tratate ca și cum nu ai trimite `priority` (default intern).
  *     tags: [Cards]
  *     security:
  *       - bearerAuth: []
@@ -418,7 +424,6 @@ const validateCardsReorderLocal = [
     .isInt({ min: 0 })
     .withMessage("order must be a positive integer"),
 ];
-
 router.patch("/reorder", validate(validateCardsReorderLocal), updateCardsOrder);
 
 /**
@@ -463,5 +468,28 @@ router.patch(
   validate(validations.validateCardMove),
   moveCardToColumn
 );
+
+/**
+ * @swagger
+ * /api/cards/{id}:
+ *   delete:
+ *     summary: Șterge un card
+ *     tags: [Cards]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Card ID
+ *     responses:
+ *       204:
+ *         description: Card deleted
+ *       404:
+ *         description: Card not found
+ */
+router.delete("/:id", deleteCard);
 
 module.exports = router;
