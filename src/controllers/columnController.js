@@ -1,8 +1,12 @@
-const mongoose = require('mongoose');
-const Column = require('../models/Column');
-const Board = require('../models/Board');
-const Card = require('../models/Card');
-const { NotFoundError, ForbiddenError, BadRequestError } = require('../utils/errors');
+const mongoose = require("mongoose");
+const Column = require("../models/Column");
+const Board = require("../models/Board");
+const Card = require("../models/Card");
+const {
+  NotFoundError,
+  ForbiddenError,
+  BadRequestError,
+} = require("../utils/errors");
 
 // Create a new column in a board
 exports.createColumn = async (req, res, next) => {
@@ -11,16 +15,18 @@ exports.createColumn = async (req, res, next) => {
 
     // VALIDARE ID board
     if (!mongoose.Types.ObjectId.isValid(board)) {
-      throw new BadRequestError('Invalid board ID format');
+      throw new BadRequestError("Invalid board ID format");
     }
 
     const boardDoc = await Board.findById(board);
     if (!boardDoc) {
-      throw new NotFoundError('Board not found');
+      throw new NotFoundError("Board not found");
     }
 
     if (boardDoc.owner.toString() !== req.user.id) {
-      throw new ForbiddenError('You do not have permission to add columns to this board');
+      throw new ForbiddenError(
+        "You do not have permission to add columns to this board"
+      );
     }
 
     const highestOrderColumn = await Column.findOne({ board })
@@ -33,12 +39,12 @@ exports.createColumn = async (req, res, next) => {
       title,
       board,
       order,
-      owner: req.user.id // <-- SETAT owner!
+      owner: req.user.id, // <-- SETAT owner!
     });
 
     res.status(201).json({
-      status: 'success',
-      data: column
+      status: "success",
+      data: column,
     });
   } catch (error) {
     next(error);
@@ -50,23 +56,23 @@ exports.getColumnsByBoardId = async (req, res, next) => {
   try {
     const { boardId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(boardId)) {
-      throw new BadRequestError('Invalid board ID format');
+      throw new BadRequestError("Invalid board ID format");
     }
 
     const board = await Board.findById(boardId);
     if (!board) {
-      throw new NotFoundError('Board not found');
+      throw new NotFoundError("Board not found");
     }
 
     if (board.owner.toString() !== req.user.id) {
-      throw new ForbiddenError('You do not have permission to view this board');
+      throw new ForbiddenError("You do not have permission to view this board");
     }
 
     const columns = await Column.find({ board: boardId }).sort({ order: 1 });
 
     res.status(200).json({
-      status: 'success',
-      data: columns
+      status: "success",
+      data: columns,
     });
   } catch (error) {
     next(error);
@@ -78,21 +84,23 @@ exports.getColumnById = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new BadRequestError('Invalid column ID format');
+      throw new BadRequestError("Invalid column ID format");
     }
 
     const column = await Column.findById(id);
     if (!column) {
-      throw new NotFoundError('Column not found');
+      throw new NotFoundError("Column not found");
     }
 
     if (column.owner.toString() !== req.user.id) {
-      throw new ForbiddenError('You do not have permission to view this column');
+      throw new ForbiddenError(
+        "You do not have permission to view this column"
+      );
     }
 
     res.status(200).json({
-      status: 'success',
-      data: column
+      status: "success",
+      data: column,
     });
   } catch (error) {
     next(error);
@@ -105,24 +113,26 @@ exports.updateColumn = async (req, res, next) => {
     const { id } = req.params;
     const { title } = req.body;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new BadRequestError('Invalid column ID format');
+      throw new BadRequestError("Invalid column ID format");
     }
 
     const column = await Column.findById(id);
     if (!column) {
-      throw new NotFoundError('Column not found');
+      throw new NotFoundError("Column not found");
     }
 
     if (column.owner.toString() !== req.user.id) {
-      throw new ForbiddenError('You do not have permission to update this column');
+      throw new ForbiddenError(
+        "You do not have permission to update this column"
+      );
     }
 
     column.title = title;
     await column.save();
 
     res.status(200).json({
-      status: 'success',
-      data: column
+      status: "success",
+      data: column,
     });
   } catch (error) {
     next(error);
@@ -134,49 +144,57 @@ exports.deleteColumn = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new BadRequestError('Invalid column ID format');
+      throw new BadRequestError("Invalid column ID format");
     }
 
     const column = await Column.findById(id);
-    if (!column) {
-      throw new NotFoundError('Column not found');
-    }
+    if (!column) throw new NotFoundError("Column not found");
 
     if (column.owner.toString() !== req.user.id) {
-      throw new ForbiddenError('You do not have permission to delete this column');
+      throw new ForbiddenError(
+        "You do not have permission to delete this column"
+      );
     }
 
-    await Column.deleteOne(); // declanșează cascade delete!
-    // Update order of remaining columns
+    // 1) șterge cardurile din coloană
+    await Card.deleteMany({ column: column._id });
+
+    // 2) șterge coloana (cu filtru pe owner)
+    const { deletedCount } = await Column.deleteOne({
+      _id: column._id,
+      owner: req.user.id,
+    });
+    if (deletedCount !== 1)
+      throw new NotFoundError("Column not found (concurrent change?)");
+
+    // 3) reindexează ordinele
     await Column.updateMany(
-      {
-        board: column.board,
-        order: { $gt: column.order }
-      },
+      { board: column.board, order: { $gt: column.order } },
       { $inc: { order: -1 } }
     );
 
-    res.status(204).send();
+    return res.status(204).send();
   } catch (error) {
     next(error);
   }
 };
-
 // Update the order of columns in a board
 exports.updateColumnsOrder = async (req, res, next) => {
   try {
     const { boardId, columnOrders } = req.body;
     if (!mongoose.Types.ObjectId.isValid(boardId)) {
-      throw new BadRequestError('Invalid board ID format');
+      throw new BadRequestError("Invalid board ID format");
     }
 
     const board = await Board.findById(boardId);
     if (!board) {
-      throw new NotFoundError('Board not found');
+      throw new NotFoundError("Board not found");
     }
 
     if (board.owner.toString() !== req.user.id) {
-      throw new ForbiddenError('You do not have permission to update this board');
+      throw new ForbiddenError(
+        "You do not have permission to update this board"
+      );
     }
 
     const updatePromises = columnOrders.map(({ id, order }) =>
@@ -189,11 +207,13 @@ exports.updateColumnsOrder = async (req, res, next) => {
 
     await Promise.all(updatePromises);
 
-    const updatedColumns = await Column.find({ board: boardId }).sort({ order: 1 });
+    const updatedColumns = await Column.find({ board: boardId }).sort({
+      order: 1,
+    });
 
     res.status(200).json({
-      status: 'success',
-      data: updatedColumns
+      status: "success",
+      data: updatedColumns,
     });
   } catch (error) {
     next(error);
