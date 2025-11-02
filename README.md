@@ -1,100 +1,55 @@
-# Backend - Task Pro API
+# 🧰 TaskPro – Backend (Node.js / Express / MongoDB)
 
-## Directory Structure
+[![Node](https://img.shields.io/badge/Node-%3E=16-339933.svg)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express-4-000000.svg)](https://expressjs.com)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248.svg)](https://mongoosejs.com)
+[![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D.svg)](https://swagger.io)
+[![Render](https://img.shields.io/badge/Deploy-Render-46E3B7.svg)](https://render.com)
 
-```plaintext
-src/
-├── config/               # Configuration files
-│   ├── db.js             # Database connection
-│   ├── cloudinary.js     # Cloudinary setup
-│   └── email.js          # Email service setup
-├── controllers/          # Request handlers
-│   ├── authController.js
-│   ├── boardController.js
-│   ├── cardController.js
-│   ├── columnController.js
-│   └── userController.js
-├── middlewares/          # Middleware functions
-│   ├── authMiddleware.js
-│   ├── errorMiddleware.js
-│   └── validationMiddleware.js
-├── models/               # Mongoose models
-│   ├── User.js
-│   ├── Board.js
-│   ├── Column.js
-│   ├── Card.js
-│   └── Session.js
-├── routes/               # API routes
-│   ├── authRoutes.js
-│   ├── boardRoutes.js
-│   ├── cardRoutes.js
-│   ├── columnRoutes.js
-│   └── userRoutes.js
-├── services/             # External services
-│   ├── cloudinaryService.js
-│   ├── emailService.js
-│   └── websocketService.js
-├── utils/                # Utility functions
-│   ├── validators.js
-│   ├── helpers.js
-│   └── logger.js
-└── app.js                # Express application setup
-```
+TaskPro Backend provides a REST API for the **TaskPro** Kanban app.  
+It handles authentication, user profiles, board/column/card CRUD, theming, image upload, and support emails.
 
-## Getting Started
+---
 
-### Installation
+## 🔗 Live API
+
+- Base URL: `https://taskpro-backend-lybk.onrender.com`
+- Swagger UI: `https://taskpro-backend-lybk.onrender.com/api-docs` _(if enabled)_
+- Frontend: [`TaskPro-Frontend`](https://github.com/Abiatar-Cosma/TaskPro-Frontend)
+
+---
+
+## ✨ Features
+
+- 🔐 JWT authentication & authorization (access + refresh tokens)
+- 🧩 CRUD for Boards, Columns, and Cards (Kanban)
+- 🎨 Per-user theme: Light / Violet / Dark
+- ☁️ Image upload (Cloudinary)
+- 📧 Support form (“Need Help”) via Nodemailer
+- 📚 API documentation with Swagger
+- 🧪 Jest + Supertest + MongoDB-memory-server for testing
+- 🛡️ Helmet, CORS, and validation middleware for security
+
+---
+
+## 🧱 Tech Stack
+
+**Core:** Node.js, Express, MongoDB, Mongoose  
+**Auth:** bcryptjs, jsonwebtoken, passport-jwt, express-validator  
+**Docs:** swagger-ui-express, swagger-jsdoc  
+**Uploads:** multer, multer-storage-cloudinary, cloudinary  
+**Mail:** nodemailer  
+**Utils:** dotenv, morgan, helmet, cors, express-async-handler  
+**Tests:** jest, supertest, mongodb-memory-server
+
+---
+
+## 🚀 Getting Started
+
+### 1️⃣ Clone & install
 
 ```bash
+git clone https://github.com/Abiatar-Cosma/TaskPro-Backend.git
+cd TaskPro-Backend
 npm install
 ```
-
-### Configuration
-
-Create a `.env` file in the root directory based on `.env.example`.
-
-### Development
-
-```bash
-npm run dev
-```
-
-### Testing
-
-```bash
-npm test
-```
-
-### Production
-
-```bash
-npm start
-```
-
-## API Documentation
-
-API documentation is available at `/api/docs` when the server is running.
-
-## Authentication
-
-The API uses JWT token-based authentication. Include the token in the `Authorization` header:
-
-```
-Authorization: Bearer [your-token]
-```
-
-## Environment Variables
-
-- `PORT`: Server port (default: 5000)
-- `MONGO_URI`: MongoDB connection string
-- `JWT_SECRET`: Secret for JWT signing
-- `JWT_EXPIRES_IN`: JWT expiration time
-- `CLOUDINARY_CLOUD_NAME`: Cloudinary cloud name
-- `CLOUDINARY_API_KEY`: Cloudinary API key
-- `CLOUDINARY_API_SECRET`: Cloudinary API secret
-- `EMAIL_HOST`: SMTP host for email service
-- `EMAIL_PORT`: SMTP port
-- `EMAIL_USER`: SMTP username
-- `EMAIL_PASS`: SMTP password
-- `GOOGLE_CLIENT_ID`: Google OAuth client ID
-- `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
